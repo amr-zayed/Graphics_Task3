@@ -1,79 +1,75 @@
-/*
- * Copyright (c) 1993-1997, Silicon Graphics, Inc.
- * ALL RIGHTS RESERVED 
- * Permission to use, copy, modify, and distribute this software for 
- * any purpose and without fee is hereby granted, provided that the above
- * copyright notice appear in all copies and that both the copyright notice
- * and this permission notice appear in supporting documentation, and that 
- * the name of Silicon Graphics, Inc. not be used in advertising
- * or publicity pertaining to distribution of the software without specific,
- * written prior permission. 
- *
- * THE MATERIAL EMBODIED ON THIS SOFTWARE IS PROVIDED TO YOU "AS-IS"
- * AND WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR OTHERWISE,
- * INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY OR
- * FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL SILICON
- * GRAPHICS, INC.  BE LIABLE TO YOU OR ANYONE ELSE FOR ANY DIRECT,
- * SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY
- * KIND, OR ANY DAMAGES WHATSOEVER, INCLUDING WITHOUT LIMITATION,
- * LOSS OF PROFIT, LOSS OF USE, SAVINGS OR REVENUE, OR THE CLAIMS OF
- * THIRD PARTIES, WHETHER OR NOT SILICON GRAPHICS, INC.  HAS BEEN
- * ADVISED OF THE POSSIBILITY OF SUCH LOSS, HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE
- * POSSESSION, USE OR PERFORMANCE OF THIS SOFTWARE.
- * 
- * US Government Users Restricted Rights 
- * Use, duplication, or disclosure by the Government is subject to
- * restrictions set forth in FAR 52.227.19(c)(2) or subparagraph
- * (c)(1)(ii) of the Rights in Technical Data and Computer Software
- * clause at DFARS 252.227-7013 and/or in similar or successor
- * clauses in the FAR or the DOD or NASA FAR Supplement.
- * Unpublished-- rights reserved under the copyright laws of the
- * United States.  Contractor/manufacturer is Silicon Graphics,
- * Inc., 2011 N.  Shoreline Blvd., Mountain View, CA 94039-7311.
- *
- * OpenGL(R) is a registered trademark of Silicon Graphics, Inc.
- */
-
-/*
- * robot.c
- * This program shows how to composite modeling transformations
- * to draw translated and rotated hierarchical models.
- * Interaction:  pressing the s and e keys (shoulder and elbow)
- * alters the rotation of the robot arm.
- */
-
-
-
-#include <stdlib.h>
-#include <glut.h>
 #include <math.h>
-using namespace std;
+#include<iostream>
+#include <glut.h>
+#include "imageloader.h"
+
 
 #define PI 3.14
-
+using namespace std;
+double eye[] = {0, 0, 3};
+double center[] = {0, 0, 0};
+double up[] = {0, 1, 0};
 static int Rshoulder = 0, Relbow = 0, Lshoulder = 0, Lelbow = 0, Lshoulderx = 0, Rshoulderx = 0, RLegx = 0, LLegx = 0, RLegz = 0, LLegz = 0, RKnee = 0, LKnee = 0;
-int moving, startx, starty;
-double eye[] = {0.0, -4.0, -10.0};
-double center[] = {0.0, -4.0, 0.0};
-double up[] = {0.0, 1.0, 0.0};
-double down[] = {0.0, 1.0, 0.0};
 
+// RGBA
+GLfloat light_ambient[] = {0.0, 0.0, 0.0, 0.0};
+GLfloat light_diffuse[] = {0.5, 0.5, 0.5, 1.0};
+GLfloat light_specular[] = {1.0, 1.0, 1.0, 1.0};
+// x , y, z, w
+GLfloat light_position[] = {0.5, 5.0, 0.0, 1.0};
+GLfloat lightPos1[] = {-0.5, -5.0, -2.0, 1.0};
 
-GLfloat angle = 180.0;  
-GLfloat angle2 = 0.0;  
-
-
-void init(void)
+//Makes the image into a texture, and returns the id of the texture
+GLuint loadTexture(Image *image)
 {
-	glMatrixMode(GL_PROJECTION);
-	gluPerspective(60.0,
-				   1.0,
-				   1.0, 20.0);
-	glMatrixMode(GL_MODELVIEW);
-   glClearColor(0.0, 0.0, 0.0, 0.0);
-   glShadeModel(GL_FLAT);
+	GLuint textureId;
+	glGenTextures(1, &textureId);			 //Make room for our texture
+	glBindTexture(GL_TEXTURE_2D, textureId); //Tell OpenGL which texture to edit
+	//Map the image to the texture
+	glTexImage2D(GL_TEXTURE_2D,				  //Always GL_TEXTURE_2D
+				 0,							  //0 for now
+				 GL_RGB,					  //Format OpenGL uses for image
+				 image->width, image->height, //Width and height
+				 0,							  //The border of the image
+				 GL_RGB,					  //GL_RGB, because pixels are stored in RGB format
+				 GL_UNSIGNED_BYTE,			  //GL_UNSIGNED_BYTE, because pixels are stored
+											  //as unsigned numbers
+				 image->pixels);			  //The actual pixel data
+	return textureId;						  //Returns the id of the texture
 }
+
+GLuint _textureId; //The id of the texture
+
+//Initializes 3D rendering
+void initRendering()
+{
+	Image *image = loadBMP("images/floor.bmp");
+	_textureId = loadTexture(image);
+	delete image;
+	// Turn on the power
+	glEnable(GL_LIGHTING);
+	// Flip light switch
+	glEnable(GL_LIGHT0);
+	glEnable(GL_LIGHT1);
+	// assign light parameters
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+	glLightfv(GL_LIGHT1, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT1, GL_SPECULAR, light_specular);
+	// Material Properties
+	GLfloat lightColor1[] = {1.0f, 1.0f, 1.0f, 1.0f};
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, lightColor1);
+	glLightfv(GL_LIGHT1, GL_POSITION, lightPos1);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, lightColor1);
+	glEnable(GL_NORMALIZE);
+	//Enable smooth shading
+	glShadeModel(GL_SMOOTH);
+	// Enable Depth buffer
+	glEnable(GL_DEPTH_TEST);
+}
+
 void rotatePoint(double a[], double theta, double p[])
 {
 
@@ -110,6 +106,7 @@ void crossProduct(double a[], double b[], double c[])
 	c[2] = a[0] * b[1] - a[1] * b[0];
 }
 
+
 void normalize(double a[])
 {
 	double norm;
@@ -119,87 +116,74 @@ void normalize(double a[])
 	a[1] /= norm;
 	a[2] /= norm;
 }
-
-// Rotation about vertical direction
-void lookRight()
+void turnLeft()
 {
-	rotatePoint(up, PI / 8, eye);
+	double theta = -PI/100;
+    rotatePoint(up, theta, eye);
 }
 
-void lookLeft()
+void turnRight()
 {
-	rotatePoint(up, -PI / 8, eye);
+	double theta = PI/100;
+    rotatePoint(up, theta, eye);
 }
 
-// Rotation about horizontal direction
-
-void lookUp()
+void moveUp()
 {
-	double horizontal[3];
-	double look[] = {center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]};
-	crossProduct(up, look, horizontal);
-	normalize(horizontal);
-	rotatePoint(horizontal, PI / 8, eye);
-	rotatePoint(horizontal, PI / 8, up);
+	double horizontal [3];
+    double look [] = {center[0] -eye[0], center[1] -eye[1], center[2] -eye[2] };
+    crossProduct(up, look, horizontal);
+    normalize(horizontal);
+    rotatePoint(horizontal, PI/100, eye);
+    rotatePoint(horizontal, PI/100, up);
 }
 
-void lookDown()
+
+void moveDown()
 {
-	double horizontal[3];
-	double look[] = {center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]};
-	crossProduct(up, look, horizontal);
-	normalize(horizontal);
-	rotatePoint(horizontal, -PI / 8, eye);
-	rotatePoint(horizontal, -PI / 8, up);
-	//Write your code here
+
+	double horizontal [3];
+    double look [] = {center[0] -eye[0], center[1] -eye[1], center[2] -eye[2] };
+    crossProduct(up, look, horizontal);
+    normalize(horizontal);
+    rotatePoint(horizontal, -PI/100, eye);
+    rotatePoint(horizontal, -PI/100, up);
 }
 
-// Forward and Backward
 void moveForward()
 {
+
+	double speed = 0.1;
 	double direction[3];
 	direction[0] = center[0] - eye[0];
 	direction[1] = center[1] - eye[1];
 	direction[2] = center[2] - eye[2];
-	float speed = 0.1;
+	normalize(direction);
+
 	eye[0] += direction[0] * speed;
 	eye[1] += direction[1] * speed;
 	eye[2] += direction[2] * speed;
 
 	/*center[0] += direction[0] * speed;
-	center[1] += direction[1] * speed;
 	center[2] += direction[2] * speed;*/
 }
 
-void moveBackword()
+void moveBack()
 {
+
+	double speed = -0.1;
 	double direction[3];
 	direction[0] = center[0] - eye[0];
 	direction[1] = center[1] - eye[1];
 	direction[2] = center[2] - eye[2];
-	float speed = -0.1;
+
+	normalize(direction);
+
 	eye[0] += direction[0] * speed;
-	eye[1] += direction[1] * speed;
 	eye[2] += direction[2] * speed;
 
-	/*center[0] += direction[0] * speed;
-	center[1] += direction[1] * speed;
-	center[2] += direction[2] * speed;*/
-	//Write your code here
-}
-void reset()
-{
-	double e[] = {0.0, -4.0, -10.0};
-	double c[] = {0.0, -4.0, 0.0};
-	double u[] = {0.0, 1.0, 0.0};
-	for (int i = 0; i < 3; i++)
-	{
-		eye[i] = e[i];
-		center[i] = c[i];
-		up[i] = u[i];
-	}
-	angle = 180;
-	angle2 = 0;
+	center[0] += direction[0] * speed;
+	center[2] += direction[2] * speed;
 }
 
 void Leg(float pos, float legx, float legz, float knee){
@@ -212,7 +196,7 @@ void Leg(float pos, float legx, float legz, float knee){
 		glPushMatrix();
 			glPushMatrix();
 				glScalef(0.8,2.5,1);
-				glutWireCube(1);
+				glutSolidCube(1);
 			glPopMatrix();	
 			glPushMatrix();
 				glTranslatef(0,-1.25,0);
@@ -222,7 +206,7 @@ void Leg(float pos, float legx, float legz, float knee){
 					glTranslatef(0,-2.5,0);
 					glPushMatrix();
 						glScalef(0.8,2.5,1);
-						glutWireCube(1);
+						glutSolidCube(1);
 					glPopMatrix();
 				glPopMatrix();
 
@@ -244,14 +228,14 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	glTranslatef (1.0, 0.0, 0.0);
 	glPushMatrix();
 		glScalef (2.0, 0.6, 1.0);
-		glutWireCube (1.0);
+		glutSolidCube(1);
 	glPopMatrix();
 	glTranslatef (1.0, 0.0, 0.0);
 	glRotatef ((GLfloat) elbow, 0.0, 0.0, 1.0);
 	glTranslatef (1.0, 0.0, 0.0);
 	glPushMatrix();
 		glScalef (2.0, 0.6, 1.0);
-		glutWireCube (1.0);
+		glutSolidCube(1);
 	glPopMatrix();
 
    //Draw finger flang 1 
@@ -261,7 +245,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0.0, 0.0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
 	   //Draw finger flang 1
 	   glTranslatef(0.15, 0.0, 0.0);
@@ -269,7 +253,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0.0, 0.0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
    glPopMatrix();
    
@@ -280,7 +264,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0, 0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
 	   //Draw finger flang 2
 	   glTranslatef(0.15, 0.0, 0.0);
@@ -288,7 +272,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0.0, 0.0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
    glPopMatrix();
 
@@ -299,7 +283,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0, 0.0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
 	   //Draw finger flang 3 
 	   glTranslatef(0.15, 0.0, 0.0);
@@ -307,7 +291,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0.0, 0.0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
    glPopMatrix();
 
@@ -318,7 +302,7 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0, 0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
 	   //Draw finger flang 4 
 	   glTranslatef(0.15, 0.0, 0.0);
@@ -326,28 +310,58 @@ void Arm(float shoulder, float elbow, float shoulderx){
 	   glTranslatef(0.15, 0.0, 0.0);
 	   glPushMatrix();
 		   glScalef(0.3, 0.1, 0.1);
-		   glutWireCube(1);
+		   glutSolidCube(1);
 	   glPopMatrix();
    glPopMatrix();
 }
+
 void display(void)
 {
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+
+	// Clear Depth and Color buffers
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(eye[0], eye[1], eye[2],
-			  center[0], center[1], center[2],
-			  up[0], up[1], up[2]);
-	//glColor3f(0.0, 1.0, 0.0);
-   glPushMatrix();
-		glRotatef(angle2, 1.0, 0.0, 0.0);
-		glRotatef(angle, 0.0, 1.0, 0.0);
+
+	gluLookAt(eye[0], eye[1], eye[2], center[0], center[1], center[2], up[0], up[1], up[2]);
+
+	glPushMatrix();
+	glLightfv(GL_LIGHT1, GL_POSITION, lightPos1);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	glPopMatrix();
+
+	glPushMatrix();
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, _textureId);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBegin(GL_QUADS);
+	glNormal3f(0.0, 1.0, 0.0);
+	glTexCoord2f(0.0f, 0.0f); glVertex3f(-1, -1,  1);
+	glTexCoord2f(3.0f, 0.0f); glVertex3f( 1, -1,  1);
+	glTexCoord2f(3.0f, 3.0f); glVertex3f( 1, -1, -1);
+	glTexCoord2f(0.0f, 3.0f); glVertex3f(-1, -1, -1);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glPopMatrix();
+
+	glPushMatrix();
+		/*glRotatef(angle2, 1.0, 0.0, 0.0);
+		glRotatef(angle, 0.0, 1.0, 0.0);*/
+		glScalef(0.1,0.1,0.1);
 		glRotatef(180, 0.0, 1.0, 0.0);
 
 		//Chest
 		glPushMatrix();
 			glTranslatef(0,-2,0);
 			glScalef(2,4,1);
-			glutWireCube(1);
+			glutSolidCube(1);
 		glPopMatrix();
 
 		//Right Arm 
@@ -373,206 +387,8 @@ void display(void)
 		glutWireSphere(0.9,10,10);
 		glPopMatrix();
    glPopMatrix();
-   glutSwapBuffers();
-}
 
-void reshape(int w, int h)
-{
-   glViewport(0, 0, (GLsizei)w, (GLsizei)h);
-   glMatrixMode(GL_PROJECTION);
-   glLoadIdentity();
-   gluPerspective(85.0, (GLfloat)w / (GLfloat)h, 0.0, 20.0);
-   glMatrixMode(GL_MODELVIEW);
-   glLoadIdentity();
-   glTranslatef(0.0, 0.0, -5.0);
-}
-
-void keyboard(unsigned char key, int x, int y)
-{
-   switch (key)
-   {
-	case 'a':
-		if (Rshoulderx<90)
-		{
-			Rshoulderx = (Rshoulderx + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'A':
-		if (Rshoulderx>0)
-		{
-			Rshoulderx = (Rshoulderx - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 's':
-		if (Rshoulder<50)
-		{
-			Rshoulder = (Rshoulder + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'S':
-		if (Rshoulder>-50)
-		{
-			Rshoulder = (Rshoulder - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'e':
-		if (Relbow<0)
-		{
-			Relbow = (Relbow + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'E':
-		if (Relbow>-90)
-		{
-			Relbow = (Relbow - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'd':
-		if (Lshoulder>-50)
-		{
-			Lshoulder = (Lshoulder - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'D':
-		if (Lshoulder<50)
-		{
-			Lshoulder = (Lshoulder + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'r':
-		if (Lelbow>0)
-		{
-			Lelbow = (Lelbow - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'R':
-		if (Lelbow<90)
-		{
-			Lelbow = (Lelbow + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'f':
-		if (Lshoulderx>-90)
-		{
-			Lshoulderx = (Lshoulderx - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'F':
-		if (Lshoulderx<0)
-		{
-			Lshoulderx = (Lshoulderx + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'v':
-		if (LLegx<60)
-		{
-			LLegx = (LLegx + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'V':
-		if (LLegx>-85)
-		{
-			LLegx = (LLegx - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'b':
-		if (LLegz<5)
-		{
-			LLegz = (LLegz + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'B':
-		if (LLegz>-70)
-		{
-			LLegz = (LLegz - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'n':
-		if (LKnee<5)
-		{
-			LKnee = (LKnee + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'N':
-		if (LKnee>-110)
-		{
-			LKnee = (LKnee - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'z':
-		if (RLegx<60)
-		{
-			RLegx = (RLegx + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'Z':
-		if (RLegx>-85)
-		{
-			RLegx = (RLegx - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'x':
-		if (RLegz<70)
-		{
-			RLegz = (RLegz + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'X':
-		if (RLegz>-5)
-		{
-			RLegz = (RLegz - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'c':
-		if (RKnee<5)
-		{
-			RKnee = (RKnee + 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-	case 'C':
-		if (RKnee>-110)
-		{
-			RKnee = (RKnee - 5) % 360;
-		}
-		glutPostRedisplay();
-		break;
-   case 27:
-      exit(0);
-      break;
-	case 'j':
-		moveForward();
-		break;
-	case 'k':
-		moveBackword();
-		break;
-	case 'l':
-		reset();
-		break;
-	}
-	glutPostRedisplay();
+	glutSwapBuffers();
 }
 
 void specialKeys(int key, int x, int y)
@@ -580,64 +396,100 @@ void specialKeys(int key, int x, int y)
 	switch (key)
 	{
 	case GLUT_KEY_LEFT:
-		lookLeft();
+		turnLeft();
 		break;
 	case GLUT_KEY_RIGHT:
-		lookRight();
+		turnRight();
 		break;
 	case GLUT_KEY_UP:
-		lookUp();
+		if (center[1] <= 1.5)
+			moveUp();
 		break;
 	case GLUT_KEY_DOWN:
-		lookDown();
+		if (center[1] >= -1.5)
+			moveDown();
 		break;
 	}
 	glutPostRedisplay();
 }
 
-static void mouse(int button, int state, int x, int y)
+void Keyboard(unsigned char Key, int x, int y)
 {
-  if (button == GLUT_LEFT_BUTTON) {
-    if (state == GLUT_DOWN) {
-      moving = 1;
-      startx = x;
-      starty = y;
-    }
-    if (state == GLUT_UP) {
-      moving = 0;
-    }
-  }
+	switch (Key)
+	{
+	case 'f':
+		moveForward();
+		break;
+	case 'b':
+		moveBack();
+		break;
+
+	case 27:
+		exit(0);
+		break;
+
+	default:
+		break;
+	}
+	glutPostRedisplay();
 }
 
-
-static void motion(int x, int y)
+/*void screen_menu(int value)
 {
-  if (moving) {
-    angle = angle + (x - startx);
-    angle2 = angle2 + (y - starty);
-    startx = x;
-    starty = y;
-    glutPostRedisplay();
-  }
-}
+	char* name = 0;
 
+	switch (value) {
+	case 'a':
+		name = "data/al.obj";
+		break;
+	case 's':
+		name = "data/soccerball.obj";
+		break;
+	case 'd':
+		name = "data/dolphins.obj";
+		break;
+	case 'f':
+		name = "data/flowers.obj";
+		break;
+	case 'j':
+		name = "data/f-16.obj";
+		break;
+	case 'p':
+		name = "data/porsche.obj";
+		break;
+	case 'r':
+		name = "data/rose+vase.obj";
+		break;
+	case 'D':
+		name = "data/dragon-fixed.obj";
+		break;
+	}
 
+	if (name) {
+		pmodel = glmReadOBJ(name);
+		if (!pmodel) exit(0);
+		glmUnitize(pmodel);
+		glmFacetNormals(pmodel);
+		glmVertexNormals(pmodel, 90.0);
+		glmScale(pmodel, .15);
+	}
+
+	glutPostRedisplay();
+}*/
 
 int main(int argc, char **argv)
 {
-   glutInit(&argc, argv);
-   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-   glutInitWindowSize(500, 500);
-   glutInitWindowPosition(100, 100);
-   glutCreateWindow(argv[0]);
-   init();
-   glutMouseFunc(mouse);
-   glutMotionFunc(motion);
-   glutDisplayFunc(display);
-   glutReshapeFunc(reshape);
-   glutKeyboardFunc(keyboard);
-   glutSpecialFunc(specialKeys);
-   init();
-   glutMainLoop();
-   return 0;
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutInitWindowSize(700, 700);
+	glutCreateWindow("Floor");
+	initRendering();
+	glMatrixMode(GL_PROJECTION);
+	gluPerspective(60, 1.0, 0.1, 10);
+	glutKeyboardFunc(Keyboard);
+	glutSpecialFunc(specialKeys);
+	glutDisplayFunc(display);
+	//glutCreateMenu(screen_menu);
+	glutMainLoop();
+	return 0;
 }
