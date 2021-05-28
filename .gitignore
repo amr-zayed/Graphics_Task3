@@ -2,4 +2,8 @@ Robotic arm.sdf
 .vs/
 Debug/
 Robotic arm/Debug/
+Robotic arm/Robotic arm.vcxproj
+Robotic arm/Robotic arm.vcxproj.filters
+Robotic arm/Robotic arm.vcxproj.user
 Robotic arm.v11
+Robotic arm.sln
