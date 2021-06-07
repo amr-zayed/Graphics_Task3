@@ -43,11 +43,11 @@ static float zBag = 3.3;
 static float xRing = 5;
 static float yRing = -0.7;
 static float zRing = 3.5;
-
+/*
 // object instances
 Model bag("Models/Punch_bag.obj");        // Punch bag Model
 Model ring("Models/boxingring.obj");              // Boxing Ring Model
-
+*/
 //Makes the image into a texture, and returns the id of the texture
 GLuint loadTexture(Image* image)
 {
@@ -605,7 +605,8 @@ void display(void)
 	glPopMatrix();
 
 	glPushMatrix();
-	glTranslatef(0,0.4,0);
+	/*glRotatef(angle2, 1.0, 0.0, 0.0);
+	glRotatef(angle, 0.0, 1.0, 0.0);*/
 	glScalef(0.1, 0.1, 0.1);
 	glRotatef(180, 0.0, 1.0, 0.0);
 
@@ -640,21 +641,20 @@ void display(void)
 	glPopMatrix();
 	glPopMatrix();
 
-	 //Draw ring
-	glPushMatrix();
-	glTranslatef(xRing,yRing,zRing);
-	glTranslatef(-6.5,0.26,-1.5);
-	glRotatef(45, 0.0, 1.0, 0.0);
-	glScalef(2,2,2);
-	glTranslatef(1.0,0.0,0.0);
-	ring.draw();
-	glPopMatrix();
+	// Draw ring
+	//glPushMatrix();
+	//glTranslatef(xRing,yRing,zRing);
+	//glTranslatef(-1.0,0.0,0.0);
+	//glRotatef(90, 0.0, 1.0, 0.0);
+	//glTranslatef(1.0,0.0,0.0);
+	//ring.draw();
+	//glPopMatrix();
 
-	// Draw bag
-	glPushMatrix();
-	glTranslatef(xBag, yBag, zBag);
-	bag.draw();
-	glPopMatrix();
+	//// Draw bag
+	//glPushMatrix();
+	//glTranslatef(xBag, yBag, zBag);
+	//bag.draw();
+	//glPopMatrix();
 
 	glutSwapBuffers();
 }
